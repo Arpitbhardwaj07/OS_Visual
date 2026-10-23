@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ConcertCast Engine | Distributed Live Media Streaming Backend</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+  <header>
+    <div class="header-title">
+      <span class="badge-tag">STREAM BACKEND RUNTIME</span>
+      <h1 style="font-size: 15px; font-weight: 700; letter-spacing: 0.5px;">ConcertCast OS: Real-Time Live Ingest & CDN Edge Delivery</h1>
+    </div>
+    
+    <!-- Module Navigation Tabs -->
+    <nav class="nav-tabs" style="position: relative;">
+      <div class="tab-indicator"></div>
+      <button class="tab-btn active" data-tab="tab-all">📑 Complete Pipeline View</button>
+      <button class="tab-btn" data-tab="module-cpu">1. Transcoding Dispatcher</button>
+      <button class="tab-btn" data-tab="module-memory">2. Edge Chunk Cache</button>
+      <button class="tab-btn" data-tab="module-concurrency">3. Ingest-to-CDN Ring Buffer</button>
+      <button class="tab-btn highlight-guide" id="btn-toggle-guide">💡 Interactive Evaluation Guide</button>
+    </nav>
+
+    <div class="auth-watermark">
+      <span>Pipeline Auth: <strong>24BCB0116</strong></span>
+    </div>
+  </header>
+
+  <!-- Interactive Guided Demo Modal / Banner -->
+  <div id="demo-guide-banner" class="guide-banner" style="display: none;">
+    <div class="guide-header">
+      <strong>🎯 Streaming Engine Evaluation Guide (What to show & say):</strong>
+      <button id="btn-close-guide" style="padding: 2px 6px; font-size: 11px;">✕ Close</button>
+    </div>
+    <div class="guide-grid">
+      <div class="guide-step">
+        <div class="step-num">Step 1: Real-Time Stream Preemption</div>
+        <p>1. Switch algorithm to <strong>Multilevel Queue (MLQ Preemptive)</strong>.<br>2. Click <strong>+ VOD Archive Job</strong> (Background priority, starts running).<br>3. Immediately click <strong>+ 4K 60FPS Video Ingest</strong> (Real-time priority).<br>👉 <em>Point to PCB: The heavy VOD transcode is instantly <strong>PREEMPTED</strong> to eliminate live stream buffering!</em></p>
+      </div>
+      <div class="guide-step">
+        <div class="step-num">Step 2: Edge VOD Cache & Eviction</div>
+        <p>1. In Edge Cache Module, click <strong>Preset: Hot Camera Streams</strong>.<br>2. Click <strong>Request Next Segment</strong> one by one.<br>👉 <em>Show L1 Edge RAM filling up. When full (4 frame slots), explain how LRU/FIFO kicks cold concert angles back to S3/Swap!</em></p>
+      </div>
+      <div class="guide-step">
+        <div class="step-num">Step 3: Mutex & Race Condition Prevention</div>
+        <p>1. Click <strong>+ Ingest Producer</strong> 6 times until the 5-slot ring buffer is full.<br>👉 <em>Show 6th ingest worker blocked on <code>sem_wait(&empty;)</code>.<br>2. Click <strong>+ CDN Broadcaster</strong> to egress packets.<br>3. Toggle <strong>Unsafe Mode</strong> to demonstrate packet collision & stream glitching!</em></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-container">
+    <!-- Simulation Subsystems Workspace -->
+    <main class="sim-workspace">
+      
+      <!-- Feature 1: Real-Time Transcoding & Media Dispatch Engine -->
+      <section class="module-card" id="module-cpu">
+        <div class="module-header">
+          <h2><span>⚡</span> 1. Real-Time Transcoding & Media Dispatch Engine</h2>
+          <div class="controls-bar">
+            <span style="font-size: 11px; color: var(--primary-text); font-weight: 600;">Dispatch Policy:</span>
+            <select id="sched-algo-select">
+              <option value="MLQ">Multilevel Priority Queue (Preemptive RT Transcoding)</option>
+              <option value="FCFS">First-Come, First-Served (Unprioritized Queue)</option>
+            </select>
+            <button id="btn-run-cpu" class="btn-primary">▶ Auto Dispatch</button>
+            <button id="btn-step-cpu">⏭ Step 1s</button>
+            <button id="btn-pause-cpu">⏸ Pause</button>
+            <button id="btn-reset-cpu" class="btn-danger">↺ Clear Queue</button>
+          </div>
+        </div>
+        <div class="module-content">
+          <!-- Plain English Explanation Banner -->
+          <div class="explain-box" id="cpu-explain-banner">
+            <span class="explain-icon">💡</span>
+            <div id="cpu-explain-text">
+              <strong>Transcoder Core Status:</strong> Ready. 4K live streams preempt lower-priority background archiving jobs to guarantee sub-100ms latency!
+            </div>
+          </div>
+          <div>
+            <div style="font-size: 11px; font-weight: 700; color: var(--primary-text); margin-bottom: 5px;">
+              INJECT CONCERT MEDIA WORKLOADS (Ingest Streams):
+            </div>
+            <div class="controls-bar">
+              <button id="btn-add-live-video" title="Priority 0 (Real-Time Ingest)">+ 4K 60FPS Video Ingest</button>
+              <button id="btn-add-prod-ctrl" title="Priority 1 (Interactive Audio Mux)">+ Audio Track Muxer</button>
+              <button id="btn-add-audience" title="Priority 2 (Adaptive 1080p Ladder)">+ Adaptive 1080p Transcode</button>
+              <button id="btn-add-backups" title="Priority 3 (Background S3 Sync)">+ VOD Archive Job</button>
+              <button id="btn-add-batch" class="btn-primary" title="Simulate high concurrent concert traffic spike">⚡ Ingest Spike Surge</button>
+            </div>
+          </div>
+
+          <!-- Multilevel Queues / Ready Lists -->
+          <div>
+            <div style="font-size: 11px; font-weight: 700; color: var(--primary-text); margin-bottom: 4px;">
+              PRIORITY TRANSCODING QUEUES & RUNTIME PREEMPTION DISPATCH:
+            </div>
+            <div class="queues-wrapper" id="queues-container">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- PCB Table -->
+          <div>
+            <div style="font-size: 11px; font-weight: 700; color: var(--primary-text); margin-bottom: 4px;">
+              PROCESS CONTROL BLOCK (PCB) & MEDIA TASK RUNTIME MONITOR:
+            </div>
+            <div style="max-height: 110px; overflow-y: auto;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>PID</th>
+                    <th>Media Task Name</th>
+                    <th>Ingest Priority</th>
+                    <th>Arrival</th>
+                    <th>Compute Time</th>
+                    <th>Remaining</th>
+                    <th>State</th>
+                    <th>Queue Delay</th>
+                    <th>View Lag / Latency</th>
+                  </tr>
+                </thead>
+                <tbody id="pcb-tbody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Comparative Analysis: Response Time vs Lag -->
+          <div class="chart-section-wrapper">
+            <div class="chart-section-header">
+              <div class="chart-section-title">
+                STREAM BENCHMARK: Transcoding Latency vs. Viewer Stream Jitter (FCFS vs. MLQ Preemptive)
+              </div>
+              <div class="chart-section-subtitle">
+                Live metrics derived from concert stream ingest-to-playback telemetry
+              </div>
+            </div>
+            
+            <div id="chart-cpu-container" class="chart-main-container">
+              <!-- Dynamically populated DOM bars for rich styling & smooth animations -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Feature 2: Edge VOD Chunk Cache & Tiered Storage -->
+      <section class="module-card" id="module-memory">
+        <div class="module-header">
+          <h2><span>🗄</span> 2. Edge VOD Chunk Cache & Tiered Storage Engine</h2>
+          <div class="controls-bar">
+            <span style="font-size: 11px; color: var(--primary-text); font-weight: 600;">Eviction Policy:</span>
+            <select id="mem-policy-select">
+              <option value="FIFO">FIFO (First-In, First-Out Ingest Cache)</option>
+              <option value="LRU">LRU (Least Recently Viewed Segment)</option>
+            </select>
+            <button id="btn-step-mem" class="btn-primary">Fetch Next Chunk</button>
+            <button id="btn-stream-mem">Auto Playback Stream</button>
+            <button id="btn-reset-mem" class="btn-danger">Flush Cache</button>
+          </div>
+        </div>
+        <div class="module-content">
+          <!-- Plain English Explanation Banner -->
+          <div class="explain-box" id="mem-explain-banner">
+            <span class="explain-icon">💡</span>
+            <div id="mem-explain-text">
+              <strong>Edge Cache Architecture:</strong> L1 RAM Edge Cache holds 4 high-speed video frames. If a viewer requests an uncached camera angle, a <strong>Cache Miss / Page Fault</strong> occurs and swaps cold video from NVMe/S3 into RAM using LRU/FIFO!
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="number" id="input-page-num" min="0" max="15" value="0" style="width: 65px;">
+            <button id="btn-req-page">+ Request Custom Segment</button>
+            <span style="font-size: 11px; color: var(--primary-text); font-weight: 600;">Playback Presets:</span>
+            <button id="btn-preset-4k">Concert Replay Stream [Chunk 1, 2, 3, 1, 4, 5, 2, 1]</button>
+            <span id="mem-fault-counter" class="status-tag" style="margin-left: auto;">Cache Miss Rate: 0 (0.0%)</span>
+          </div>
+
+          <div class="memory-grid">
+            <!-- Virtual Memory / Cold Storage -->
+            <div>
+              <div style="font-size: 11px; font-weight: 700; color: var(--primary-text); margin-bottom: 4px;">
+                NVMe / S3 COLD VIDEO CATALOG (Segments [0 - 11] - Stems & Multi-Cam Feeds)
+              </div>
+              <div id="vm-page-list" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+
+            <!-- Physical RAM Edge Frames -->
+            <div>
+              <div style="font-size: 11px; font-weight: 700; color: var(--primary-text); margin-bottom: 4px;">
+                L1 EDGE RAM CACHE (4 High-Speed Resident Frame Slots)
+              </div>
+              <div id="ram-frames-list">
+                <!-- 4 Frames -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Page Replacement Decision Log -->
+          <div style="border-top: 1px solid var(--panel-border); padding-top: 6px;">
+            <div style="font-size: 11px; font-weight: 700; color: var(--primary-text); margin-bottom: 2px;">
+              EDGE CACHE DECISION REASONING & STORAGE HIERARCHY:
+            </div>
+            <div id="mem-decision-banner" class="explain-box" style="margin-bottom: 0;">
+              L1 Edge memory initialized. Awaiting viewer video playback requests.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Feature 3: Ingest-to-CDN Streaming Ring Buffer -->
+      <section class="module-card" id="module-concurrency">
+        <div class="module-header">
+          <h2><span>🔒</span> 3. Ingest-to-CDN Streaming Ring Buffer & Synchronization</h2>
+          <div class="controls-bar">
+            <button id="btn-spawn-producer" class="btn-primary">+ Ingest Worker (Producer)</button>
+            <button id="btn-spawn-consumer">+ CDN Broadcaster (Consumer)</button>
+            <button id="btn-toggle-race">Toggle Mutex Barrier (Safe / Unsafe)</button>
+            <button id="btn-reset-sync" class="btn-danger">Reset Ring</button>
+          </div>
+        </div>
+        <div class="module-content">
+          <!-- Plain English Explanation Banner -->
+          <div class="explain-box" id="sync-explain-banner">
+            <span class="explain-icon">💡</span>
+            <div id="sync-explain-text">
+              <strong>Synchronization Pipeline:</strong> Ingest camera threads deposit packetized chunks into the 5-slot LL-HLS ring buffer; CDN broadcasters dequeue them. POSIX Mutex & counting semaphores guarantee zero race conditions or audio/video packet corruption.
+            </div>
+          </div>
+          <!-- Live Telemetry for Mutex & Semaphores -->
+          <div class="sync-telemetry-bar">
+            <div>
+              <span class="telemetry-label">MUTEX BUFFER LOCK</span>
+              <span id="sync-mutex-state" class="status-tag status-running">UNLOCKED (1)</span>
+            </div>
+            <div class="telemetry-col">
+              <span class="telemetry-label">SEMAPHORE: EMPTY SLOTS (Free Capacity)</span>
+              <span id="sync-sem-empty" class="telemetry-val">5</span>
+            </div>
+            <div class="telemetry-col">
+              <span class="telemetry-label">SEMAPHORE: FULL SLOTS (Packets Ready)</span>
+              <span id="sync-sem-full" class="telemetry-val">0</span>
+            </div>
+            <div class="telemetry-col" style="flex: 1;">
+              <span class="telemetry-label">ACTIVE CRITICAL SECTION THREAD</span>
+              <span id="sync-active-cs" class="telemetry-val" style="font-size: 11px;">IDLE (No thread in Critical Section)</span>
+            </div>
+            <div>
+              <span class="telemetry-label">STREAM CORRUPTION SHIELD</span>
+              <span id="sync-protection-mode" class="status-tag status-running">ACTIVE (POSIX Mutex)</span>
+            </div>
+          </div>
+
+          <!-- Bounded Streaming Buffer Representation -->
+          <div>
+            <div style="font-size: 11px; font-weight: 700; color: var(--primary-text); margin-bottom: 2px;">
+              SHARED STREAMING RING BUFFER (5-Slot Circular Media Ring):
+            </div>
+            <div class="buffer-track" id="sync-buffer-slots">
+              <!-- 5 slots -->
+            </div>
+          </div>
+
+          <!-- Thread Execution Pool -->
+          <div>
+            <div style="font-size: 11px; font-weight: 700; color: var(--primary-text); margin-bottom: 2px;">
+              CONCURRENT INGEST & CDN THREAD POOL (Wait / Signal State & Race Collision Verifier):
+            </div>
+            <div style="max-height: 85px; overflow-y: auto;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>TID</th>
+                    <th>Worker Role</th>
+                    <th>Stream Pipeline Action</th>
+                    <th>Lock / Semaphore Dependency</th>
+                    <th>Worker Status</th>
+                  </tr>
+                </thead>
+                <tbody id="threads-tbody">
+                  <!-- Dynamic -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Right: Prominent Dark-Mode Terminal Window -->
+    <aside class="side-terminal">
+      <div class="terminal-header">
+        <h3><span>⚡</span> STREAM RUNTIME AUDIT TERMINAL</h3>
+        <div style="display: flex; gap: 4px;">
+          <button id="btn-clear-term" style="padding: 2px 8px; font-size: 10px;">Clear</button>
+          <button id="btn-export-term" style="padding: 2px 8px; font-size: 10px;">Export</button>
+        </div>
+      </div>
+      <div class="terminal-body" id="term-logs">
+        <!-- Raw system logs populated here -->
+      </div>
+    </aside>
+  </div>
+
+  <!-- Toast Notifications Container -->
+  <div id="toast-root" class="toast-container" aria-live="polite"></div>
+
+  <!-- Pure ES Module Logic - Zero external npm or CDN dependencies -->
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>
