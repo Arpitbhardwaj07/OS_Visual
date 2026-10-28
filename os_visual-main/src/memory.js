@@ -20,7 +20,7 @@ export class MemorySimulator {
     this.totalRequests = 0;
     this.pageFaults = 0;
 
-    // Stream sequence for 4K video encoding simulation
+    // Optional deterministic page-reference sequence.
     this.pendingSequence = [];
     this.autoStreamTimer = null;
 
@@ -57,8 +57,8 @@ export class MemorySimulator {
 
     document.getElementById("btn-preset-4k").addEventListener("click", () => {
       this.pendingSequence = [1, 2, 3, 1, 4, 5, 2, 1, 6, 7, 3, 2];
-      this.terminal.log("EDGE_CACHE", `Playback Sequence Loaded: [Segments ${this.pendingSequence.join(", ")}]`);
-      this.decisionBanner.innerText = `Loaded Multi-Cam playback chunk sequence: [${this.pendingSequence.join(", ")}]. Click 'Fetch Next Chunk' or 'Auto Playback Stream'.`;
+      this.terminal.log("PAGING", `Reference page sequence loaded: [${this.pendingSequence.join(", ")}]`);
+      this.decisionBanner.innerText = `Loaded page sequence: [${this.pendingSequence.join(", ")}]. Request pages manually or start automatic requests.`;
     });
 
     document.getElementById("btn-step-mem").addEventListener("click", () => {
@@ -66,7 +66,7 @@ export class MemorySimulator {
         const next = this.pendingSequence.shift();
         this.requestPage(next);
       } else {
-        // Random video chunk request
+        // Request a random virtual page when the sequence is empty.
         const randPage = Math.floor(Math.random() * this.numVirtualPages);
         this.requestPage(randPage);
       }
@@ -77,11 +77,11 @@ export class MemorySimulator {
       if (this.autoStreamTimer) {
         clearInterval(this.autoStreamTimer);
         this.autoStreamTimer = null;
-        streamBtn.innerText = "Auto Playback Stream";
-        this.terminal.log("EDGE_CACHE", `Playback chunk stream paused.`);
+        streamBtn.innerText = "Auto request pages";
+        this.terminal.log("PAGING", "Automatic page requests paused.");
       } else {
-        streamBtn.innerText = "⏸ Pause Playback";
-        this.terminal.log("EDGE_CACHE", `Continuous viewer playback stream active.`);
+        streamBtn.innerText = "⏸ Pause requests";
+        this.terminal.log("PAGING", "Automatic page requests started.");
         this.autoStreamTimer = setInterval(() => {
           if (this.pendingSequence.length > 0) {
             this.requestPage(this.pendingSequence.shift());
@@ -106,10 +106,10 @@ export class MemorySimulator {
       // PAGE HIT / CACHE HIT
       this.lruTimestamps[frameIndex] = this.timeCounter;
       this.frames[frameIndex].accessCount++;
-      const reason = `CACHE HIT: Segment ${page} is resident in L1 Edge RAM Frame ${frameIndex}. Sub-millisecond stream response.`;
+      const reason = `PAGE HIT: Page ${page} is resident in physical frame ${frameIndex}.`;
       this.setExplain(`🟢 <strong>CACHE HIT:</strong> Requested <strong>Segment ${page}</strong> is already in high-speed Edge RAM Frame ${frameIndex}. Zero disk latency incurred!`);
       
-      this.terminal.log("EDGE_CACHE", `[CACHE HIT] Video Segment ${page} served from RAM Frame ${frameIndex}`, {
+      this.terminal.log("PAGING", `[PAGE HIT] Page ${page} found in frame ${frameIndex}`, {
         status: "HIT",
         frame: frameIndex,
         total_requests: this.totalRequests,
@@ -123,7 +123,7 @@ export class MemorySimulator {
 
     // 2. PAGE FAULT / CACHE MISS
     this.pageFaults++;
-    this.terminal.log("STORAGE", `cache_miss_handler(): Segment ${page} not in RAM! Fetching from S3/NVMe...`);
+    this.terminal.log("PAGING", `Page fault: page ${page} is not resident in physical memory.`);
 
     // Check if there is an empty frame
     const emptyIndex = this.frames.findIndex(f => f === null);
@@ -139,11 +139,11 @@ export class MemorySimulator {
       this.fifoQueue.push(emptyIndex);
       this.lruTimestamps[emptyIndex] = this.timeCounter;
 
-      const reason = `CACHE MISS: Fetched Segment ${page} from S3/NVMe into Free Edge Frame ${emptyIndex}.`;
+      const reason = `PAGE FAULT: Loaded page ${page} into free frame ${emptyIndex}.`;
       this.setExplain(`🟡 <strong>CACHE MISS:</strong> Segment ${page} was in cold storage. Loaded into free RAM Frame ${emptyIndex}.`);
-      this.terminal.log("EDGE_CACHE", reason, { page, frame: emptyIndex, action: "LOAD_FREE_FRAME" });
+      this.terminal.log("PAGING", reason, { page, frame: emptyIndex, action: "LOAD_FREE_FRAME" });
       this.decisionBanner.innerText = reason;
-      toast.show(`Cache Miss: Loaded Segment ${page} into Edge Frame ${emptyIndex}`, "fault");
+      toast.show(`Page fault: loaded page ${page} into frame ${emptyIndex}`, "fault");
     } else {
       // Frame replacement required
       let victimFrameIndex = -1;
@@ -174,9 +174,9 @@ export class MemorySimulator {
       };
       this.lruTimestamps[victimFrameIndex] = this.timeCounter;
 
-      const reason = `CACHE MISS & EVICTION (${this.policy}): Evicted cold Segment ${victimPage} from Frame ${victimFrameIndex}; Cached Segment ${page}.`;
+      const reason = `PAGE FAULT (${this.policy}): Replaced page ${victimPage} in frame ${victimFrameIndex} with page ${page}.`;
       this.setExplain(`🔴 <strong>CACHE EVICTION (${this.policy}):</strong> All 4 RAM slots full! Evicted least requested Segment ${victimPage} back to NVMe to make room for Segment ${page}.`);
-      this.terminal.log("EDGE_CACHE", reason, {
+      this.terminal.log("PAGING", reason, {
         policy: this.policy,
         evicted_segment: victimPage,
         cached_segment: page,
@@ -185,7 +185,7 @@ export class MemorySimulator {
       });
 
       this.decisionBanner.innerText = reason;
-      toast.show(`Cache Eviction (${this.policy}): Evicted Segment ${victimPage} -> Loaded ${page}`, "fault");
+      toast.show(`${this.policy}: replaced page ${victimPage} with page ${page}`, "fault");
     }
 
     this.render();
@@ -195,7 +195,7 @@ export class MemorySimulator {
     if (this.autoStreamTimer) {
       clearInterval(this.autoStreamTimer);
       this.autoStreamTimer = null;
-      document.getElementById("btn-stream-mem").innerText = "Auto Request Stream";
+      document.getElementById("btn-stream-mem").innerText = "Auto request pages";
     }
     this.frames = Array(this.numFrames).fill(null);
     this.fifoQueue = [];
@@ -206,16 +206,16 @@ export class MemorySimulator {
     this.pendingSequence = [];
 
     this.terminal.log("PAGING", "sys_vm_flush(): Page frames deallocated. MMU table reset.");
-    this.decisionBanner.innerText = "System initialized. Awaiting video encoding memory references.";
+    this.decisionBanner.innerText = "Memory initialized. Awaiting page requests.";
     this.render();
   }
 
   render() {
-    // 1. Virtual Memory page grid (Concert catalog chunks)
+    // 1. Virtual memory page grid.
     const descriptions = [
-      "Keyframe 0 (Main Stage)", "Audio Stem 1 (Vocals)", "P-Frame 2 (Main Stage)", "Crowd Cam 1 (1080p)",
-      "Keyframe 1 (Drum Cam)", "Audio Stem 2 (Bass)", "P-Frame 3 (Drone Cam)", "Crowd Cam 2 (720p)",
-      "Keyframe 2 (Guitar Solo)", "Audio Stem 3 (Guitars)", "P-Frame 4 (4K Stage)", "HLS VOD Segment 0"
+      "Code segment", "Stack data", "Heap allocation", "Shared library",
+      "Process data", "File cache", "Shared memory", "Page table",
+      "Code segment", "Stack data", "Heap allocation", "Mapped file"
     ];
 
     this.vmList.innerHTML = Array.from({ length: this.numVirtualPages }).map((_, i) => {
@@ -226,7 +226,7 @@ export class MemorySimulator {
             <span>Page ${i}</span>
             <span>${isLoaded ? 'RAM [VALID]' : '[SWAP]'}</span>
           </div>
-          <div class="vm-page-desc">${descriptions[i] || 'Video Chunk'}</div>
+          <div class="vm-page-desc">${descriptions[i] || 'Virtual page'}</div>
         </div>
       `;
     }).join('');
@@ -260,6 +260,6 @@ export class MemorySimulator {
 
     // Update fault counter
     const faultRate = this.totalRequests > 0 ? ((this.pageFaults / this.totalRequests) * 100).toFixed(1) : "0.0";
-    this.faultCounter.innerText = `Cache Miss Rate: ${this.pageFaults} / ${this.totalRequests} (${faultRate}%)`;
+    this.faultCounter.innerText = `Page faults: ${this.pageFaults} / ${this.totalRequests} (${faultRate}%)`;
   }
 }

@@ -1,6 +1,6 @@
 // src/concurrency.js
 // Concurrency & Synchronization Simulator
-// Bounded Streaming Buffer, Mutex Lock, Counting Semaphores (empty/full), Wait/Signal States & Race Condition Detection
+// Bounded buffer, mutex, semaphores, wait/signal states, and race-condition simulation.
 import { toast } from "./toast.js";
 
 export class ConcurrencySimulator {
@@ -44,23 +44,23 @@ export class ConcurrencySimulator {
 
   bindEvents() {
     document.getElementById("btn-spawn-producer").addEventListener("click", () => {
-      this.spawnThread("PRODUCER", "Camera Ingest Worker");
+      this.spawnThread("PRODUCER", "Producer thread");
     });
 
     document.getElementById("btn-spawn-consumer").addEventListener("click", () => {
-      this.spawnThread("CONSUMER", "CDN Edge Broadcaster");
+      this.spawnThread("CONSUMER", "Consumer thread");
     });
 
     document.getElementById("btn-toggle-race").addEventListener("click", () => {
       this.mutexProtectionActive = !this.mutexProtectionActive;
       if (this.mutexProtectionActive) {
-        this.protectionModeEl.innerText = "ACTIVE (POSIX Mutex)";
+        this.protectionModeEl.innerText = "ACTIVE";
         this.protectionModeEl.className = "status-tag status-running";
-        this.terminal.log("SYNCHRONIZATION", "ipc_lock_enable(): POSIX Mutex & Semaphore synchronization active. Race hazard shield engaged.");
+        this.terminal.log("SYNCHRONIZATION", "Mutex and semaphore synchronization enabled.");
       } else {
-        this.protectionModeEl.innerText = "BYPASSED (Unsafe Race Hazards!)";
+        this.protectionModeEl.innerText = "BYPASSED (UNSAFE)";
         this.protectionModeEl.className = "status-tag status-preempted";
-        this.terminal.log("SYNCHRONIZATION", "WARNING: Mutex lock BYPASSED! Ingest and CDN workers accessing shared ring buffer unsynchronized!");
+        this.terminal.log("SYNCHRONIZATION", "Warning: mutex bypassed; workers may access the shared buffer concurrently.");
       }
       this.render();
     });
@@ -76,11 +76,11 @@ export class ConcurrencySimulator {
       action,
       state: "CREATED", // CREATED, WAITING_SEM, WAITING_MUTEX, RUNNING_CS, COMPLETED, RACE_COLLISION
       waitResource: null,
-      chunkData: role === "PRODUCER" ? `HLS Segment #${this.chunkIdCounter++}` : null
+      chunkData: role === "PRODUCER" ? `Item ${this.chunkIdCounter++}` : null
     };
 
     this.threads.push(thread);
-    this.terminal.log("STREAM_RING", `pthread_create() -> Thread TID ${tid} spawned [${role}]`, { role, pipeline: action });
+    this.terminal.log("SYNCHRONIZATION", `Thread TID ${tid} created [${role}]`, { role, action });
 
     // Execute thread lifecycle
     setTimeout(() => this.runThreadLifecycle(thread), 300);

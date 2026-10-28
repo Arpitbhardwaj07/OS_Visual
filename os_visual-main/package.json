@@ -1,19 +1,11 @@
 {
-  "name": "os-simulation-dashboard",
+  "name": "os-visualizer",
   "version": "0.1.0",
-  "description": "Web-based OS simulation dashboard exposing internal mechanics",
+  "description": "Interactive visualizations for core operating systems concepts",
   "main": "index.html",
   "scripts": {
     "start": "python -m http.server 8000"
-    "start": "npx serve -s ."
   },
-  "author": "",
   "license": "MIT",
-  "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  },
-  "devDependencies": {
-    "serve": "^14.2.0"
-  }
+  "type": "module"
 }

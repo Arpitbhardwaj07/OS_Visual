@@ -1,5 +1,5 @@
 // src/terminal.js
-// Prominent dark‑mode terminal logger watermarked with student credentials
+// Runtime event log for the operating systems simulations.
 
 export class KernelTerminal {
   constructor(containerId) {
@@ -10,11 +10,7 @@ export class KernelTerminal {
 
   init() {
     this.container.innerHTML = "";
-    // Watermark header as strictly requested
-    const watermark = document.createElement("div");
-    watermark.className = "log-entry log-watermark";
-    watermark.innerHTML = `[KERNEL BOOT] Session authenticated: 24BCB0116<br/>Linux 6.8.0-31-generic #31-Ubuntu SMP PREEMPT_DYNAMIC LiveConcert-RT<br/>System telemetry and OS state change hooks initialized.`;
-    this.container.appendChild(watermark);
+    this.log("SYSTEM", "Operating systems visualizer initialized.");
 
     // Hook up clear & export buttons (they exist in the side terminal panel)
     const clearBtn = document.getElementById("btn-clear-term");
@@ -33,23 +29,27 @@ export class KernelTerminal {
     if (category === "SCHEDULER") catClass = "log-tag-SCHED";
     if (category === "PAGING") catClass = "log-tag-MEM";
     if (category === "CONCURRENCY") catClass = "log-tag-SYNC";
-    const detailStr = details ? ` | ${JSON.stringify(details)}` : "";
-    row.innerHTML = `<span class="log-time">[${time}]</span><span class="${catClass}">[${category}]</span> ${message}${detailStr}`;
+    const timeLabel = document.createElement("span");
+    timeLabel.className = "log-time";
+    timeLabel.textContent = `[${time}]`;
+    const categoryLabel = document.createElement("span");
+    categoryLabel.className = catClass;
+    categoryLabel.textContent = `[${category}]`;
+    row.append(timeLabel, categoryLabel, document.createTextNode(` ${message}`));
+    if (details) row.append(document.createTextNode(` | ${JSON.stringify(details)}`));
     this.container.appendChild(row);
     this.container.scrollTop = this.container.scrollHeight;
   }
 
   clear() {
     this.container.innerHTML = "";
-    const watermark = document.createElement("div");
-    watermark.className = "log-entry log-watermark";
-    watermark.innerHTML = `[KERNEL AUDIT] Session authenticated: 24BCB0116 (Terminal Buffer Cleared)`;
-    this.container.appendChild(watermark);
+    this.logs = [];
+    this.log("SYSTEM", "Event log cleared.");
   }
 
   exportLogs() {
     const raw = this.logs.map(l => `[${l.time}] [${l.category}] ${l.message} ${l.details ? JSON.stringify(l.details) : ""}`).join("\n");
-    const blob = new Blob([`Session authenticated: 24BCB0116\n\n${raw}`], { type: "text/plain" });
+    const blob = new Blob([raw], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

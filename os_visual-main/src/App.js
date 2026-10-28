@@ -1,4 +1,4 @@
-// src/app.js
+// src/App.js
 // Main entry point orchestrating all OS simulation modules
 
 import { KernelTerminal } from "./terminal.js";
@@ -7,37 +7,36 @@ import { MemorySimulator } from "./memory.js";
 import { ConcurrencySimulator } from "./concurrency.js";
 
 function initApp() {
-  console.log("[ConcertCast] Initializing streaming pipeline backend subsystems...");
+  console.log("[OS Visualizer] Initializing simulation modules...");
 
-  // 1. Initialize Streaming Pipeline Audit Logger
+  // 1. Initialize the system event log.
   const terminal = new KernelTerminal("term-logs");
-  terminal.log("STREAM", "Initializing ConcertCast Real-Time Media Distribution Engine...");
-  terminal.log("STREAM", "Media runtime: Linux 6.8 PREEMPT_RT transcode cluster active.");
+  terminal.log("SYSTEM", "Initializing operating systems simulations...");
 
-  // 2. Initialize Feature 1: Real-Time Transcoding & Media Dispatch Engine
+  // 2. Initialize CPU scheduling.
   const cpuSimulator = new CPUSchedulingSimulator(terminal);
-  terminal.log("STREAM", "Feature 1: Transcoding & Task Dispatch Engine initialized (H.265/AV1).");
+  terminal.log("SYSTEM", "CPU scheduling simulator ready.");
 
-  // 3. Initialize Feature 2: Edge VOD Chunk Cache & Tiered Storage Engine
+  // 3. Initialize memory management.
   const memorySimulator = new MemorySimulator(terminal);
-  terminal.log("STREAM", "Feature 2: Edge VOD Chunk Cache & S3/NVMe Tiered Storage initialized.");
+  terminal.log("SYSTEM", "Memory management simulator ready.");
 
-  // 4. Initialize Feature 3: Ingest-to-CDN Streaming Ring Buffer & Synchronization
+  // 4. Initialize process synchronization.
   const concurrencySimulator = new ConcurrencySimulator(terminal);
-  terminal.log("STREAM", "Feature 3: LL-HLS Ingest-to-CDN Streaming Ring Buffer initialized.");
+  terminal.log("SYSTEM", "Synchronization simulator ready.");
 
-  terminal.log("STREAM", "All streaming engines active. Seeding initial live concert camera feeds...");
+  terminal.log("SYSTEM", "Seeding example processes and page requests...");
 
   // Seed initial tasks in paused state
-  cpuSimulator.addTask("4K 60FPS Video Ingest", 0, 4, "rt-video");
-  cpuSimulator.addTask("VOD Archive Job", 3, 5, "backup");
+  cpuSimulator.addTask("Interactive process", 0, 4, "interactive");
+  cpuSimulator.addTask("Background process", 3, 5, "background");
   cpuSimulator.pause();
-  cpuSimulator.setExplain("💡 <strong>Transcoder Ready (Paused):</strong> Click <strong>'⏭ Step 1s'</strong> or <strong>'▶ Auto Dispatch'</strong>. Notice PID 1001 (4K 60FPS Video Ingest) was scheduled first because it's Real-Time Priority 0 to prevent stream freeze!");
+  cpuSimulator.setExplain("💡 <strong>Scheduler ready (paused):</strong> Step through the queue or start automatic execution to compare process priorities.");
 
   // Seed initial memory pages
-  memorySimulator.requestPage(0); // 4K Keyframe Chunk 0
-  memorySimulator.requestPage(1); // Audio Stem 1
-  memorySimulator.setExplain("💡 <strong>L1 Edge Cache Ready:</strong> Chunks 0 & 1 loaded in resident RAM. Click <strong>'Fetch Next Chunk'</strong> or select a camera segment to watch cache hits and cache miss evictions!");
+  memorySimulator.requestPage(0);
+  memorySimulator.requestPage(1);
+  memorySimulator.setExplain("💡 <strong>Memory simulator ready:</strong> Pages 0 and 1 are loaded. Request more pages to observe cache hits and page replacement.");
 
   // Tab navigation setup for focus view
   const tabButtons = document.querySelectorAll(".tab-btn[data-tab]");
@@ -79,24 +78,6 @@ function initApp() {
       }
     });
   });
-
-  // Guided demo toggle
-  const guideBtn = document.getElementById("btn-toggle-guide");
-  const guideBanner = document.getElementById("demo-guide-banner");
-  const closeGuideBtn = document.getElementById("btn-close-guide");
-
-  if (guideBtn && guideBanner) {
-    guideBtn.addEventListener("click", () => {
-      const isHidden = guideBanner.style.display === "none";
-      guideBanner.style.display = isHidden ? "block" : "none";
-    });
-  }
-
-  if (closeGuideBtn && guideBanner) {
-    closeGuideBtn.addEventListener("click", () => {
-      guideBanner.style.display = "none";
-    });
-  }
 
   // Expose to window for manual console testing or debugging
   window.OS = {

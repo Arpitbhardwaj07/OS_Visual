@@ -37,7 +37,7 @@ export class CPUSchedulingSimulator {
     this.algoSelect.addEventListener("change", (e) => {
       this.algo = e.target.value;
       this.terminal.log("SCHEDULER", `sys_sched_setscheduler(): Switched algorithm mode to ${this.algo}`, { algo: this.algo });
-      this.setExplain(`Switched algorithm to <strong>${this.algo}</strong>. ${this.algo === 'MLQ' ? 'Preemption active: High-priority tasks (Live Video) will immediately interrupt lower-priority tasks.' : 'FCFS active: Tasks execute in strict arrival order without preemption.'}`);
+      this.setExplain(`Switched algorithm to <strong>${this.algo}</strong>. ${this.algo === 'MLQ' ? 'Preemption is active: higher-priority processes can interrupt lower-priority processes.' : 'FCFS executes processes in arrival order without preemption.'}`);
       this.renderQueues();
     });
 
@@ -55,24 +55,24 @@ export class CPUSchedulingSimulator {
 
     // Workload Injection Buttons
     document.getElementById("btn-add-live-video").addEventListener("click", () => {
-      this.addTask("4K 60FPS Video Ingest", 0, Math.floor(Math.random() * 4) + 5, "rt-video");
+      this.addTask("Interactive process", 0, Math.floor(Math.random() * 4) + 5, "interactive");
     });
     document.getElementById("btn-add-prod-ctrl").addEventListener("click", () => {
-      this.addTask("Audio Track Muxer", 1, Math.floor(Math.random() * 3) + 3, "prod-ctrl");
+      this.addTask("System process", 1, Math.floor(Math.random() * 3) + 3, "system");
     });
     document.getElementById("btn-add-audience").addEventListener("click", () => {
-      this.addTask("Adaptive 1080p Transcode", 2, Math.floor(Math.random() * 3) + 2, "audience");
+      this.addTask("Batch process", 2, Math.floor(Math.random() * 3) + 2, "batch");
     });
     document.getElementById("btn-add-backups").addEventListener("click", () => {
-      this.addTask("VOD Archive Job", 3, Math.floor(Math.random() * 5) + 6, "backup");
+      this.addTask("Background process", 3, Math.floor(Math.random() * 5) + 6, "background");
     });
 
     document.getElementById("btn-add-batch").addEventListener("click", () => {
-      this.terminal.log("TRANSCODER", "stream_ingest_burst(): Sudden influx of multi-cam concert feeds detected!");
-      this.addTask("VOD Archive Job", 3, 7, "backup");
-      this.addTask("Adaptive 1080p Transcode", 2, 3, "audience");
-      setTimeout(() => this.addTask("Audio Track Muxer", 1, 4, "prod-ctrl"), 500);
-      setTimeout(() => this.addTask("4K 60FPS Video Ingest", 0, 6, "rt-video"), 1000);
+      this.terminal.log("SCHEDULER", "workload_burst(): Adding a mixed batch of processes.");
+      this.addTask("Background process", 3, 7, "background");
+      this.addTask("Batch process", 2, 3, "batch");
+      setTimeout(() => this.addTask("System process", 1, 4, "system"), 500);
+      setTimeout(() => this.addTask("Interactive process", 0, 6, "interactive"), 1000);
     });
   }
 
@@ -187,7 +187,7 @@ export class CPUSchedulingSimulator {
         const turnaround = this.runningTask.completionTime - this.runningTask.arrivalTime;
         const wait = turnaround - this.runningTask.burst;
         const responseTime = this.runningTask.startTime - this.runningTask.arrivalTime;
-        const lag = wait; // Stream jitter/lag directly correlates to waiting delay in audio/video pipeline
+        const lag = wait;
 
         this.recordMetrics(responseTime, lag);
 
@@ -196,8 +196,7 @@ export class CPUSchedulingSimulator {
         this.terminal.log("SYSCALL", `sys_exit(): PID ${this.runningTask.pid} completed execution`, {
           task: this.runningTask.name,
           turnaround: `${turnaround}s`,
-          waiting_time: `${wait}s`,
-          stream_lag: `${lag}s`
+          waiting_time: `${wait}s`
         });
 
         this.runningTask = null;
@@ -226,10 +225,10 @@ export class CPUSchedulingSimulator {
       this.runningTask = readyTasks[0];
     } else {
       // Multilevel Queue:
-      // Priority 0: Live Video (Strict RT Priority)
-      // Priority 1: Production Control (Interactive)
-      // Priority 2: Audience Requests
-      // Priority 3: Backups (Background Batch)
+      // Priority 0: Interactive
+      // Priority 1: System
+      // Priority 2: Batch
+      // Priority 3: Background
       readyTasks.sort((a, b) => {
         if (a.priority !== b.priority) return a.priority - b.priority;
         return a.arrivalTime - b.arrivalTime;
@@ -278,9 +277,9 @@ export class CPUSchedulingSimulator {
       const activeItems = this.tasks.filter(t => t.state !== "TERMINATED");
       this.queuesContainer.innerHTML = `
         <div class="queue-row">
-          <div class="queue-label"><span>FCFS Ingest Pipeline</span></div>
+          <div class="queue-label"><span>FCFS ready queue</span></div>
           <div class="queue-items">
-            ${activeItems.length === 0 ? '<span class="text-muted">[No Ingest Jobs Queued]</span>' : ''}
+            ${activeItems.length === 0 ? '<span class="text-muted">[No processes queued]</span>' : ''}
             ${activeItems.map(t => `
               <div class="queue-node anim-enter ${t === this.runningTask ? 'active-exec' : ''}">
                 <strong>PID ${t.pid}</strong>: ${t.name}
@@ -313,7 +312,7 @@ export class CPUSchedulingSimulator {
           </div>
         </div>
         <div class="queue-row">
-          <div class="queue-label"><span>Q2: S3 Background Archive</span></div>
+          <div class="queue-label"><span>Q2: Background</span></div>
           <div class="queue-items">
             ${q2.length === 0 ? '<span class="text-muted">[Idle]</span>' : ''}
             ${q2.map(t => this.renderQueueNode(t)).join('')}
@@ -391,7 +390,7 @@ export class CPUSchedulingSimulator {
           </div>
           <div class="legend-item">
             <span class="legend-swatch swatch-lag"></span>
-            <span class="legend-text">Stream Lag (Jitter delay)</span>
+            <span class="legend-text">Waiting time</span>
           </div>
         </div>
 
@@ -404,7 +403,7 @@ export class CPUSchedulingSimulator {
               <div class="chart-bar bar-resp" style="height: ${fcfsRespH}px;" title="FCFS Avg Response Time: ${fcfsAvgResp}s">
                 <span class="bar-value-label">${fcfsAvgResp}s</span>
               </div>
-              <div class="chart-bar bar-lag" style="height: ${fcfsLagH}px;" title="FCFS Avg Stream Lag: ${fcfsAvgLag}ms">
+              <div class="chart-bar bar-lag" style="height: ${fcfsLagH}px;" title="FCFS average waiting time: ${fcfsAvgLag}ms">
                 <span class="bar-value-label">${fcfsAvgLag}ms</span>
               </div>
             </div>
@@ -414,7 +413,7 @@ export class CPUSchedulingSimulator {
             <div class="chart-group-meta">
               <div class="group-heading">First-Come, First-Served (FCFS)</div>
               <div class="group-metric-line">Avg Response: <strong>${fcfsAvgResp}s</strong></div>
-              <div class="group-metric-line">Stream Lag: <strong>${fcfsAvgLag}ms</strong></div>
+              <div class="group-metric-line">Waiting time: <strong>${fcfsAvgLag}ms</strong></div>
             </div>
           </div>
 
@@ -424,7 +423,7 @@ export class CPUSchedulingSimulator {
               <div class="chart-bar bar-resp" style="height: ${mlqRespH}px;" title="MLQ Avg Response Time: ${mlqAvgResp}s">
                 <span class="bar-value-label">${mlqAvgResp}s</span>
               </div>
-              <div class="chart-bar bar-lag" style="height: ${mlqLagH}px;" title="MLQ Avg Stream Lag: ${mlqAvgLag}ms">
+              <div class="chart-bar bar-lag" style="height: ${mlqLagH}px;" title="MLQ average waiting time: ${mlqAvgLag}ms">
                 <span class="bar-value-label">${mlqAvgLag}ms</span>
               </div>
             </div>
@@ -434,7 +433,7 @@ export class CPUSchedulingSimulator {
             <div class="chart-group-meta">
               <div class="group-heading">Multilevel Queue (MLQ Preemptive)</div>
               <div class="group-metric-line">Avg Response: <strong>${mlqAvgResp}s</strong></div>
-              <div class="group-metric-line">Stream Lag: <strong>${mlqAvgLag}ms</strong></div>
+              <div class="group-metric-line">Waiting time: <strong>${mlqAvgLag}ms</strong></div>
             </div>
           </div>
 
